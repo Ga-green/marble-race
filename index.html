@@ -170,7 +170,7 @@ textarea:focus{border-color:var(--gold);outline:none}
       </div>
       <div class="course" aria-label="코스 구성">
         <b>핀 숲</b><i>→</i><b>지그재그</b><i>→</i><b>움직이는 구멍</b><i>→</i><b>범퍼</b><i>→</i><b>집결 게이트</b><i>→</i><b>원광대학교 회전 간판</b><i>→</i><b>깔때기</b><i>→</i><b>한 개씩 문</b><i>→</i><b>운명의 구간</b><i>→</i><b>결승선</b>
-        <span class="trapnote">붉은 줄무늬 함정에 빠지면 탈락, 파란 워프 구멍은 앞으로 순간이동, 보라색 되돌이 구멍은 뒤로 돌아가고, 초록 가속 패드는 구슬을 빠르게 밀어냅니다. 주황 추격 부스터는 꼴찌권 구슬이 밟았을 때만 터져서 선두 무리 바로 뒤로 날려 보냅니다(한 판에 최대 4번). 집결 게이트에서는 먼저 온 구슬들이 모였다가 함께 재출발합니다. 문을 통과해도 운명의 구간에서 순위가 뒤집힐 수 있습니다</span>
+        <span class="trapnote">붉은 줄무늬 함정에 빠지면 탈락, 회전 날개 구간의 파란 워프 구멍은 조금 앞으로 순간이동시키고, 초록 가속 패드는 구슬을 빠르게 밀어냅니다. 주황 추격 부스터는 꼴찌권 구슬이 밟았을 때만 터져서 선두 무리 바로 뒤로 날려 보냅니다(한 판에 최대 4번). 집결 게이트에서는 먼저 온 구슬들이 모였다가 함께 재출발합니다. 문을 통과해도 운명의 구간에서 순위가 뒤집힐 수 있습니다</span>
       </div>
       <p class="summary" id="summary"></p>
       <p class="msg" id="setupMsg" role="alert"></p>
@@ -253,7 +253,7 @@ function createRace(cfg) {
 
   // 구간 1 · 핀 숲 (핀 사이사이 구멍 함정)
   labels.push({ y: 40, text: '핀 숲' });
-  const holes = new Set(['3,4', '7,9', '11,2', '15,7', '18,10']), fwd = new Set(['5,6', '13,9']);
+  const holes = new Set(['3,4', '7,9', '11,2', '15,7', '18,10']), fwd = new Set();
   for (let r = 0, y = 70; y <= 830; r++, y += 40) {
     const off = r % 2 ? 22 : 0;
     for (let c = 0, x = 30 + off; x <= W - 20; c++, x += 45) {
@@ -326,8 +326,6 @@ function createRace(cfg) {
   [[300, 1910], [560, 1990], [40, 2090], [300, 2235], [560, 2310], [40, 2400]].forEach(([x, y]) => peg(x, y + SY, 6));
   boost(70, 1900 + SY); boost(530, 2140 + SY); boost(300, 2290 + SY); boost(80, 2440 + SY);
   warp('fwd', 520, 1910 + SY, 2300 + SY);
-  warp('back', 230, 2310 + SY, 1470);
-  warp('back', 400, 2440 + SY, HOLD_Y - 120);
   trapRect(14, 2010 + SY, 28, 80);
   trapRect(W - 14, 2130 + SY, 28, 80);
   trapRect(14, 2300 + SY, 28, 80);
@@ -941,7 +939,7 @@ function createRace(cfg) {
       const prev = leadCur; leadCur = leadCand;
       if (prev !== null && race.finished.length === 0) {
         leadChanges++;
-        if (tick - lastToast > 90) { lastToast = tick; showToast(`역전! ${leadCur}번이 ${prev}번을 제치고 선두`); Sound.lead(); }
+        if (tick - lastToast > 150) { lastToast = tick; showToast(`역전! ${leadCur}번이 ${prev}번을 제치고 선두`); Sound.lead(); }
       }
     }
     if (tick % 60 === 0) {
@@ -960,14 +958,19 @@ function createRace(cfg) {
     const v = view(), { scale, viewH, pad, mapW } = v;
     // 카메라
     let target;
-    const flyer = phase === 'running' ? race.marbles.find(m => m.state === 'fly') : null;
-    if (flyer) target = flyer.y - viewH * 0.45;
-    else if (phase === 'running') { const lead = race.leaders(1)[0]; target = lead ? lead.y - viewH * 0.42 : camY; }
+    if (phase === 'running') {
+      const top = race.leaders(3);
+      if (top.length) {
+        const mean = top.reduce((sum, m) => sum + m.y, 0) / top.length;
+        target = Math.max(top[0].y - viewH * 0.78, mean - viewH * 0.4);
+      } else target = camY;
+    }
     else if (phase === 'done') target = race.FINISH - viewH * 0.6;
     else target = race.START_TOP - 20;
     const lo = race.START_TOP - 30, hi = race.BOTTOM + 40 - viewH;
     target = Math.max(lo, Math.min(hi, target));
-    camY += (target - camY) * (reduced ? 1 : flyer ? 0.16 : 0.07);
+    if (reduced) camY = target;
+    else { const cap = viewH * 0.018; camY += Math.max(-cap, Math.min(cap, (target - camY) * 0.05)); }
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = '#0c1527'; ctx.fillRect(0, 0, cssW, cssH);
