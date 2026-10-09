@@ -88,7 +88,7 @@ textarea:focus{border-color:var(--gold);outline:none}
 .ov-hint{margin:0;color:var(--ink);font-size:14px;text-shadow:0 1px 3px #000}
 .count{font-family:var(--f-display);font-size:clamp(120px,20vw,220px);line-height:1;color:var(--gold);text-shadow:0 6px 30px rgba(0,0,0,.6);animation:countIn .9s ease-out}
 @keyframes countIn{0%{transform:scale(1.6);opacity:0}25%{opacity:1}100%{transform:scale(1);opacity:1}}
-.banner{position:absolute;left:50%;top:60px;transform:translateX(-50%);max-width:calc(100% - 32px);padding:10px 22px;border-radius:999px;font-family:var(--f-display);font-size:clamp(18px,2.4vw,26px);background:var(--panel-2);border:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:bannerIn .35s cubic-bezier(.2,1.4,.4,1)}
+.banner{position:absolute;left:50%;top:16px;transform:translateX(-50%);max-width:calc(100% - 32px);padding:10px 22px;border-radius:999px;font-family:var(--f-display);font-size:clamp(18px,2.4vw,26px);background:var(--panel-2);border:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:bannerIn .35s cubic-bezier(.2,1.4,.4,1)}
 .toast{position:absolute;left:16px;bottom:16px;max-width:calc(100% - 32px);padding:8px 16px;border-radius:12px;background:rgba(20,31,54,.92);border:1px solid var(--gold);color:var(--gold);font-family:var(--f-display);font-size:clamp(16px,2vw,22px);box-shadow:0 8px 24px rgba(0,0,0,.4);animation:toastIn .3s cubic-bezier(.2,1.4,.4,1)}
 @keyframes toastIn{0%{transform:translateY(16px);opacity:0}100%{transform:none;opacity:1}}
 .toast.hot{border-color:#ff9f43;color:#ff9f43}
@@ -129,13 +129,6 @@ textarea:focus{border-color:var(--gold);outline:none}
 .copy-fallback{margin-top:10px;font-size:13px;min-height:110px}
 
 .foot{color:var(--muted);font-size:12.5px;margin:0;max-width:78ch}
-.zonechip{position:absolute;left:12px;top:12px;display:flex;align-items:center;gap:8px;padding:5px 14px 5px 5px;border-radius:999px;background:rgba(20,31,54,.92);border:1px solid var(--line);max-width:calc(100% - 90px)}
-.zonechip span{background:var(--gold);color:#2a1d00;border-radius:999px;padding:2px 9px;font-weight:700;font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
-.zonechip b{font-family:var(--f-display);font-weight:400;font-size:19px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.zonepop{position:absolute;left:50%;top:40%;transform:translate(-50%,-50%);display:grid;justify-items:center;gap:2px;pointer-events:none;text-align:center;animation:zonePop 1.9s ease-out forwards}
-.zonepop small{font-size:15px;font-weight:700;color:var(--gold);letter-spacing:.12em}
-.zonepop b{font-family:var(--f-display);font-weight:400;font-size:clamp(36px,5.6vw,64px);line-height:1.05;color:var(--ink);white-space:nowrap;text-shadow:0 4px 24px rgba(0,0,0,.8),0 0 3px #000}
-@keyframes zonePop{0%{opacity:0;transform:translate(-50%,-40%) scale(.92)}14%{opacity:1;transform:translate(-50%,-50%) scale(1)}72%{opacity:1}100%{opacity:0;transform:translate(-50%,-56%)}}
 .results{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:rgba(8,13,24,.74);backdrop-filter:blur(2px);animation:fadeIn .4s ease-out}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .board{width:min(600px,100%);max-height:100%;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:22px 22px 18px;box-shadow:0 24px 60px rgba(0,0,0,.55);display:grid;gap:14px}
@@ -165,7 +158,7 @@ textarea:focus{border-color:var(--gold);outline:none}
 .music-hint{margin:0;color:var(--muted);font-size:13px;text-align:center;transition:opacity .4s}
 .music-hint.gone{opacity:0;visibility:hidden}
 @media (max-width:520px){.res-row{grid-template-columns:52px 16px minmax(0,1fr) auto;gap:8px}.res-row .tm{font-size:12px}}
-@media (prefers-reduced-motion:reduce){.count,.banner,.toast,.results,.zonepop{animation:none}.res-row{animation:none;opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.count,.banner,.toast,.results{animation:none}.res-row{animation:none;opacity:1;transform:none}}
 </style>
 </head>
 <body>
@@ -226,8 +219,6 @@ textarea:focus{border-color:var(--gold);outline:none}
       </div>
       <div class="banner" id="banner" hidden aria-live="polite"></div>
       <div class="toast" id="toast" hidden></div>
-      <div class="zonechip" id="zoneChip" hidden aria-live="polite"><span id="zoneStep">1/8</span><b id="zoneName">핀 숲</b></div>
-      <div class="zonepop" id="zonePop" hidden></div>
       <div class="results" id="results" hidden>
         <section class="board" role="dialog" aria-labelledby="resHead">
           <div class="board-head">
@@ -962,10 +953,8 @@ function createRace(cfg) {
 
   function newRace() {
     Sound.stopAll(); Sound.startLobby();
-    zoneIdx = -1; clearTimeout(zonePopTimer); $('zoneChip').hidden = true; $('zonePop').hidden = true;
     raceId++; clearTimeout(resultsTimer); $('results').hidden = true;
     race = createRace({ nums: participants(), K: settings.ranks, shuffle, rand });
-    zones = race.labels.filter(l => l.text !== '결승' && l.zone !== false).sort((a, b) => a.y - b.y);
     for (let i = 0; i < 100; i++) race.step();
     phase = 'ready'; effects = []; drumOn = false; tick = 0; startedAt = null;
     leadCur = null; leadCand = null; leadChanges = 0; lastToast = -999; rankSnap = new Map(); rankPrev = new Map();
@@ -1031,7 +1020,7 @@ function createRace(cfg) {
         showBanner(`${e.rank}등 도착 · ${e.m.num}번`, e.rank, false);
         renderPanels(true);
       } else if (e.type === 'done') {
-        phase = 'done'; $('zoneChip').hidden = true;
+        phase = 'done';
         Sound.stopDrum();
         setTimeout(() => { if (phase === 'done') { Sound.stopBgm(); Sound.victory(); } }, 1100);
         const f = race.finished;
@@ -1045,21 +1034,6 @@ function createRace(cfg) {
   }
 
   let raceId = 0, resultsTimer = null, revealTimers = [];
-  let zones = [], zoneIdx = -1, zonePopTimer = null;
-  function updateZone() {
-    const top = race.leaders(3); if (!top.length || !zones.length) return;
-    const y = top.reduce((sum, m) => sum + m.y, 0) / top.length;
-    let idx = 0; zones.forEach((z, i) => { if (z.y - 30 <= y) idx = i; });
-    if (idx <= zoneIdx) return;
-    zoneIdx = idx;
-    $('zoneChip').hidden = false;
-    $('zoneStep').textContent = `${idx + 1}/${zones.length}`;
-    $('zoneName').textContent = zones[idx].text;
-    const pop = $('zonePop'); clearTimeout(zonePopTimer);
-    pop.innerHTML = `<small>${idx + 1}구간</small><b>${zones[idx].text}</b>`;
-    pop.hidden = false; pop.style.animation = 'none'; void pop.offsetWidth; pop.style.animation = '';
-    zonePopTimer = setTimeout(() => { pop.hidden = true; }, 1900);
-  }
   function showResults() {
     hideBanner();
     const fin = race.finished, ex = excludedInRange(), K = fin.length;
@@ -1086,7 +1060,7 @@ function createRace(cfg) {
       if (phase === 'ready' || phase === 'countdown') race.step();
       else if (phase === 'running') {
         for (let i = 0; i < speed && phase === 'running'; i++) { race.step(); handleEvents(); }
-        trackLead(); updateZone();
+        trackLead();
         if (!drumOn && phase === 'running') {
           const lead = race.leaders(1)[0];
           if (lead && lead.y > race.FINISH - 650) { drumOn = true; Sound.startDrum(); }
@@ -1487,7 +1461,6 @@ function createRace(cfg) {
 
   function showSetup() {
     Sound.stopAll(); Sound.startLobby(); phase = 'idle';
-    $('zoneChip').hidden = true; $('zonePop').hidden = true;
     raceId++; clearTimeout(resultsTimer); $('results').hidden = true;
     $('raceView').hidden = true; $('setupView').hidden = false;
     $('subline').textContent = '모든 구슬이 동시에 출발해 결승선을 먼저 통과한 순서대로 등수가 정해집니다';
