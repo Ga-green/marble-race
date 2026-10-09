@@ -169,7 +169,7 @@ textarea:focus{border-color:var(--gold);outline:none}
         <small>불참·결석 번호는 구슬을 만들지 않습니다. 쉼표로 구분하고, 범위는 120-125처럼 적습니다.</small>
       </div>
       <div class="course" aria-label="코스 구성">
-        <b>핀 숲</b><i>→</i><b>지그재그</b><i>→</i><b>움직이는 구멍</b><i>→</i><b>범퍼</b><i>→</i><b>집결 게이트</b><i>→</i><b>원광대학교 회전 간판</b><i>→</i><b>깔때기</b><i>→</i><b>한 개씩 문</b><i>→</i><b>운명의 구간</b><i>→</i><b>결승선</b>
+        <b>핀 숲</b><i>→</i><b>지그재그</b><i>→</i><b>움직이는 구멍</b><i>→</i><b>범퍼</b><i>→</i><b>집결 게이트</b><i>→</i><b>원광대학교 간판</b><i>→</i><b>깔때기</b><i>→</i><b>한 개씩 문</b><i>→</i><b>운명의 구간</b><i>→</i><b>결승선</b>
         <span class="trapnote">붉은 줄무늬 함정에 빠지면 탈락, 회전 날개 구간의 파란 워프 구멍은 조금 앞으로 순간이동시키고, 초록 가속 패드는 구슬을 빠르게 밀어냅니다. 주황 추격 부스터는 꼴찌권 구슬이 밟았을 때만 터져서 선두 무리 바로 뒤로 날려 보냅니다(한 판에 최대 4번). 집결 게이트에서는 먼저 온 구슬들이 모였다가 함께 재출발합니다. 문을 통과해도 운명의 구간에서 순위가 뒤집힐 수 있습니다</span>
       </div>
       <p class="summary" id="summary"></p>
@@ -316,8 +316,8 @@ function createRace(cfg) {
   labels.push({ y: 1800 + SY - 20, text: '회전 날개' });
   spinner(450, 1850 + SY, 120, 0.045);
   spinner(150, 1940 + SY, 120, -0.045);
-  const sign = spinner(300, 2080 + SY, 280, 0.018); sign.hr = 13; sign.e = 0.5; sign.label = '원광대학교';
-  labels.push({ y: 2080 + SY - 150, text: '원광대학교 회전 간판' });
+  const sign = spinner(300, 2080 + SY, 300, 0); sign.hr = 19; sign.e = 0.5; sign.label = '원광대학교'; sign.swing = { A: 0.42, w: 0.032, ph: rand() * 6.28 };
+  labels.push({ y: 2080 + SY - 150, text: '원광대학교 간판' });
   spinner(130, 2220 + SY, 120, 0.045);
   spinner(470, 2220 + SY, 120, -0.045);
   spinner(300, 2370 + SY, 120, -0.04);
@@ -476,7 +476,11 @@ function createRace(cfg) {
 
     const list = marbles.filter(m => m.state === 'alive');
     for (let s = 0; s < SUB; s++) {
-      for (const o of spins) { o.wsub = o.w / SUB; o.ang += o.wsub; setSpin(o); }
+      for (const o of spins) {
+        if (o.swing) { o.swing.ph += o.swing.w / SUB; const na = o.swing.A * Math.sin(o.swing.ph); o.wsub = na - o.ang; o.ang = na; }
+        else { o.wsub = o.w / SUB; o.ang += o.wsub; }
+        setSpin(o);
+      }
       for (const mv of movers) {
         mv.ph += mv.w / SUB;
         const hx = W / 2 + mv.amp * Math.sin(mv.ph), v = mv.amp * Math.cos(mv.ph) * mv.w / SUB;
@@ -1035,16 +1039,17 @@ function createRace(cfg) {
       }
       if (o.label) {
         ctx.beginPath(); ctx.moveTo(o.x1, o.y1); ctx.lineTo(o.x2, o.y2);
-        ctx.lineWidth = o.hr * 2 + 4; ctx.strokeStyle = '#eef2f8'; ctx.stroke();
-        ctx.lineWidth = o.hr * 2; ctx.strokeStyle = '#1f3f8a'; ctx.stroke();
+        ctx.save(); ctx.shadowColor = 'rgba(242,193,78,0.55)'; ctx.shadowBlur = 18;
+        ctx.lineWidth = o.hr * 2 + 6; ctx.strokeStyle = '#f2c14e'; ctx.stroke(); ctx.restore();
+        ctx.beginPath(); ctx.moveTo(o.x1, o.y1); ctx.lineTo(o.x2, o.y2);
+        ctx.lineWidth = o.hr * 2; ctx.strokeStyle = '#f7f9fd'; ctx.stroke();
         ctx.save(); ctx.translate(o.cx, o.cy);
         let a = o.ang % (Math.PI * 2); if (a < 0) a += Math.PI * 2;
         ctx.rotate(Math.cos(a) < 0 ? a + Math.PI : a);
-        ctx.fillStyle = '#ffffff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.font = '400 21px "Black Han Sans", "IBM Plex Sans KR", sans-serif';
-        ctx.fillText(o.label, 0, 1);
+        ctx.fillStyle = '#16337a'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.font = '400 30px "Black Han Sans", "IBM Plex Sans KR", sans-serif';
+        ctx.fillText(o.label, 0, 2);
         ctx.restore();
-        ctx.beginPath(); ctx.arc(o.cx, o.cy, 5, 0, Math.PI * 2); ctx.fillStyle = '#f2c14e'; ctx.fill();
         continue;
       }
       ctx.beginPath(); ctx.moveTo(o.x1, o.y1); ctx.lineTo(o.x2, o.y2);
