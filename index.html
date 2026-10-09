@@ -78,6 +78,23 @@ textarea:focus{border-color:var(--gold);outline:none}
 .last-wrap{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-top:1px solid var(--line);padding-top:14px}
 .last{margin:0;font-size:13px;color:var(--muted);white-space:pre-line;min-width:0}
 .ghost.small{padding:5px 10px;font-size:12.5px;flex:none}
+.text-in{background:var(--ground);border:1px solid var(--line);border-radius:10px;padding:11px 12px;width:100%;min-width:0;font-size:16px}
+.text-in:focus{border-color:var(--gold);outline:none}
+.text-in:disabled{opacity:.5}
+.rec-bar{display:flex;justify-content:center}
+.records{border:1px solid var(--line);border-radius:12px;background:var(--ground);padding:14px;display:grid;gap:10px}
+.records-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.records-head b{font-size:15px}
+.records p{margin:0;color:var(--muted);font-size:13px}
+.rec-list{list-style:none;margin:0;padding:0;display:grid;gap:8px;max-height:340px;overflow:auto}
+.rec-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;align-items:start;padding:10px 12px;border-radius:10px;background:var(--panel)}
+.rec-item .ev{font-weight:700;font-size:15px;min-width:0;overflow-wrap:anywhere}
+.rec-item .when,.rec-item .meta{color:var(--muted);font-size:12.5px;grid-column:1;font-variant-numeric:tabular-nums}
+.rec-item .wins{grid-column:1 / -1;font-size:14px;font-variant-numeric:tabular-nums}
+.rec-item .wins b{color:var(--gold);font-weight:700}
+.rec-item .ghost{grid-row:1 / span 2;grid-column:2}
+.save-state{margin-right:auto;align-self:center;font-size:13px;color:var(--muted)}
+.save-state.ok{color:#7cf29a}.save-state.fail{color:var(--trap)}
 
 /* 경기장 */
 .race{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
@@ -199,6 +216,11 @@ textarea:focus{border-color:var(--gold);outline:none}
         <textarea id="excluded" placeholder="예: 7, 52, 120-125"></textarea>
         <small>불참·결석 번호는 구슬을 만들지 않습니다. 쉼표로 구분하고, 범위는 120-125처럼 적습니다.</small>
       </div>
+      <div class="field">
+        <label for="eventName">행사 이름 <em>(기록을 남길 때만)</em></label>
+        <input id="eventName" class="text-in" type="text" maxlength="60" placeholder="예: 2027 입시설명회 익산" autocomplete="off">
+        <small id="eventHelp">이름을 적은 추첨만 레이스가 끝날 때 행사 이름·추첨 일시·당첨 번호가 구글 시트에 저장됩니다. 비워두면 저장하지 않습니다.</small>
+      </div>
       <div class="course" aria-label="코스 구성">
         <b>핀 숲</b><i>→</i><b>지그재그</b><i>→</i><b>움직이는 구멍</b><i>→</i><b>범퍼</b><i>→</i><b>집결 게이트</b><i>→</i><b>원광대학교 간판</b><i>→</i><b>깔때기</b><i>→</i><b>한 개씩 문</b><i>→</i><b>운명의 구간</b><i>→</i><b>결승선</b>
         <span class="trapnote">붉은 줄무늬 함정에 빠지면 탈락, 회전 날개 구간의 파란 워프 구멍은 조금 앞으로 순간이동시키고, 초록 가속 패드는 구슬을 빠르게 밀어냅니다. 주황 추격 부스터는 꼴찌권 구슬이 밟았을 때만 터져서 선두 무리 바로 뒤로 날려 보냅니다(한 판에 최대 4번). 집결 게이트에서는 뒤따르는 구슬이 충분히 모일 때까지 기다렸다가 함께 재출발합니다. 문을 통과해도 운명의 구간에서 순위가 뒤집힐 수 있습니다</span>
@@ -208,6 +230,12 @@ textarea:focus{border-color:var(--gold);outline:none}
       <button class="go" id="prepBtn" type="button">레이스 준비</button>
       <p class="music-hint" id="musicHint">♪ 화면을 한 번 누르면 대기 음악이 흘러나옵니다</p>
       <div class="last-wrap" id="lastWrap" hidden><p class="last" id="lastResult"></p><button class="ghost small" id="clearLast" type="button">기록 지우기</button></div>
+      <div class="rec-bar"><button class="ghost" id="recordsBtn" type="button">저장된 행사 기록 보기</button></div>
+      <section class="records" id="recordsPanel" hidden aria-labelledby="recordsTitle">
+        <div class="records-head"><b id="recordsTitle">저장된 행사 기록</b><span><button class="ghost small" id="recordsReload" type="button">새로고침</button> <button class="ghost small" id="recordsClose" type="button">닫기</button></span></div>
+        <p id="recordsMsg"></p>
+        <ol class="rec-list" id="recordsList"></ol>
+      </section>
     </section>
   </main>
 
@@ -229,6 +257,8 @@ textarea:focus{border-color:var(--gold);outline:none}
           </div>
           <ol class="res-rows" id="resRows"></ol>
           <div class="board-foot">
+            <span class="save-state" id="saveState" hidden></span>
+            <button class="ghost" id="saveRetry" type="button" hidden>다시 저장</button>
             <button class="ghost" id="resCopy" type="button">결과 복사</button>
             <button class="ghost" id="resClose" type="button">경기장 보기</button>
           </div>
@@ -665,7 +695,8 @@ function createRace(cfg) {
   function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
 
   /* ---------- 설정 ---------- */
-  const settings = { total: 300, ranks: 3, excludedText: '' };
+  const settings = { total: 300, ranks: 3, excludedText: '', eventName: '' };
+  const RECORD_URL = 'https://script.google.com/macros/s/AKfycbweyr31a9rrsur_ogF-tmzp-YtYbRS9bW_n6rUiuaoINboz5Eg7djUyqm07h1yd4S4_DA/exec'.indexOf('%%') === 0 ? '' : 'https://script.google.com/macros/s/AKfycbweyr31a9rrsur_ogF-tmzp-YtYbRS9bW_n6rUiuaoINboz5Eg7djUyqm07h1yd4S4_DA/exec';
   let lastResult = '';
   function load() {
     try {
@@ -697,8 +728,9 @@ function createRace(cfg) {
     settings.total = parseInt($('total').value, 10);
     settings.ranks = parseInt($('ranks').value, 10);
     settings.excludedText = $('excluded').value;
+    settings.eventName = $('eventName').value.trim().slice(0, 60);
   }
-  function writeForm() { $('total').value = settings.total; $('ranks').value = settings.ranks; $('excluded').value = settings.excludedText; }
+  function writeForm() { $('total').value = settings.total; $('ranks').value = settings.ranks; $('excluded').value = settings.excludedText; $('eventName').value = settings.eventName || ''; }
   function validate() {
     const t = settings.total, k = settings.ranks;
     if (!Number.isInteger(t) || t < 2) return '총 참여 인원은 2명 이상으로 입력하세요.';
@@ -717,12 +749,14 @@ function createRace(cfg) {
     if (Number.isInteger(k) && k >= 1) $('ranksHelp').textContent = k === 1 ? '결승선을 가장 먼저 통과한 구슬이 당첨됩니다' : `결승선을 1~${k}번째로 통과한 구슬이 당첨됩니다`;
     const ex = err ? 0 : excludedInRange();
     $('summary').innerHTML = err ? '' : `구슬 <strong>${t - ex}</strong>개가 출발해 <strong>${k}</strong>명이 당첨됩니다${ex ? ` <span style="color:var(--muted);font-size:14px">(제외 ${ex}개)</span>` : ''}`;
+    if (!RECORD_URL) { $('eventName').disabled = true; $('eventHelp').textContent = '기록 저장 주소가 아직 연결되지 않아 지금은 저장할 수 없습니다.'; $('recordsBtn').hidden = true; }
+    else if (settings.eventName && !err) { const s = document.createElement('span'); s.style.cssText = 'display:block;font-size:14px;color:var(--muted);margin-top:2px'; s.textContent = `‘${settings.eventName}’ 기록으로 구글 시트에 저장합니다`; $('summary').appendChild(s); }
     $('lastWrap').hidden = !lastResult;
     $('lastResult').textContent = lastResult ? '직전 추첨 결과\n' + lastResult : '';
   }
   let lastTickAt = 0;
   $('clearLast').addEventListener('click', clearLast);
-  ['total', 'ranks', 'excluded'].forEach(id => $(id).addEventListener('input', () => {
+  ['total', 'ranks', 'excluded', 'eventName'].forEach(id => $(id).addEventListener('input', () => {
     const before = id === 'total' ? settings.total : id === 'ranks' ? settings.ranks : null;
     readForm(); save(); renderSetup();
     const nowMs = performance.now();
@@ -1032,6 +1066,7 @@ function createRace(cfg) {
         const rid = raceId;
         resultsTimer = setTimeout(() => { if (phase === 'done' && rid === raceId) showResults(); }, 3200);
         lastResult = resultText(); save();
+        maybeSaveRecord();
         renderPanels(true);
       }
     }
@@ -1042,7 +1077,7 @@ function createRace(cfg) {
     hideBanner();
     const fin = race.finished, ex = excludedInRange(), K = fin.length;
     const d = startedAt || new Date();
-    $('resMeta').textContent = `참여 ${settings.total}명${ex ? ` · 제외 ${ex}` : ''} · ${d.toLocaleDateString('ko-KR')} ${d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+    $('resMeta').textContent = `${settings.eventName ? settings.eventName + ' · ' : ''}참여 ${settings.total}명${ex ? ` · 제외 ${ex}` : ''} · ${d.toLocaleDateString('ko-KR')} ${d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
     const t1 = fin[0] && fin[0].finT;
     const rows = $('resRows');
     rows.classList.toggle('compact', K > 5);
@@ -1394,7 +1429,7 @@ function createRace(cfg) {
       $('copyBtn').disabled = race.finished.length === 0;
       const ex = excludedInRange();
       $('raceInfo').textContent = `${settings.total}명${ex ? ` · 제외 ${ex}` : ''} · ${K}등까지`;
-      $('subline').textContent = `참여 ${settings.total}명 중 ${K}명 추첨 · 결승선 통과 순서대로 등수가 정해집니다`;
+      $('subline').textContent = `${settings.eventName ? settings.eventName + ' · ' : ''}참여 ${settings.total}명 중 ${K}명 추첨 · 결승선 통과 순서대로 등수가 정해집니다`;
     }
     $('speedBtn').textContent = speed === 1 ? '2배속' : '보통 속도';
   }
@@ -1407,11 +1442,98 @@ function createRace(cfg) {
   }
   function hideBanner() { clearTimeout(bannerTimer); $('banner').hidden = true; }
 
+  /* ---------- 구글 시트 기록 ---------- */
+  let lastPayload = null;
+  function drawStamp(d) {
+    return d.toLocaleDateString('ko-KR') + ' ' + d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  }
+  function setSave(state, text) {
+    const el = $('saveState');
+    el.hidden = !state; el.className = 'save-state' + (state === 'ok' ? ' ok' : state === 'fail' ? ' fail' : '');
+    el.textContent = text || ({ saving: '구글 시트에 저장하는 중…', ok: '구글 시트에 저장했습니다', fail: '저장하지 못했습니다' })[state] || '';
+    $('saveRetry').hidden = state !== 'fail';
+  }
+  async function loadRecords() {
+    const r = await fetch(RECORD_URL, { cache: 'no-store' });
+    const j = await r.json();
+    if (!j || !j.ok) throw new Error('bad');
+    return j.records || [];
+  }
+  const sameRecord = (x, p) => x.event === p.event && x.drawnAt === p.drawnAt;
+  async function saveRecord(p, checkFirst) {
+    setSave('saving');
+    const body = JSON.stringify(p);
+    try {
+      if (checkFirst) { const list = await loadRecords(); if (list.some(x => sameRecord(x, p))) return setSave('ok'); }
+      const r = await fetch(RECORD_URL, { method: 'POST', body });
+      const j = await r.json();
+      if (j && j.ok) return setSave('ok');
+      throw new Error((j && j.error) || 'fail');
+    } catch (e) {
+      try {
+        let list = await loadRecords();
+        if (list.some(x => sameRecord(x, p))) return setSave('ok');
+        await fetch(RECORD_URL, { method: 'POST', mode: 'no-cors', body });
+        await new Promise(res => setTimeout(res, 1500));
+        list = await loadRecords();
+        if (list.some(x => sameRecord(x, p))) return setSave('ok');
+      } catch (e2) {}
+      setSave('fail', '저장하지 못했습니다 · 인터넷 연결을 확인하세요');
+    }
+  }
+  function maybeSaveRecord() {
+    lastPayload = null; setSave(null);
+    if (!RECORD_URL || !settings.eventName) return;
+    lastPayload = {
+      event: settings.eventName,
+      drawnAt: drawStamp(startedAt || new Date()),
+      total: settings.total,
+      excluded: settings.excludedText.trim(),
+      started: race.marbles.length,
+      winners: race.finished.map(m => m.num)
+    };
+    saveRecord(lastPayload, false);
+  }
+  $('saveRetry').addEventListener('click', () => { if (lastPayload) saveRecord(lastPayload, true); });
+
+  function renderRecords(list) {
+    const ol = $('recordsList'); ol.textContent = '';
+    $('recordsMsg').textContent = list.length ? `최근 ${list.length}건 · 새 기록이 위에 있습니다` : '아직 저장된 기록이 없습니다. 행사 이름을 적고 추첨하면 여기에 쌓입니다.';
+    list.forEach(rec => {
+      const li = document.createElement('li'); li.className = 'rec-item';
+      const ev = document.createElement('div'); ev.className = 'ev'; ev.textContent = rec.event || '(이름 없음)';
+      const when = document.createElement('div'); when.className = 'when'; when.textContent = `추첨 ${rec.drawnAt}`;
+      const meta = document.createElement('div'); meta.className = 'meta';
+      meta.textContent = `참여 ${rec.total}명 · 출발 ${rec.started}개${rec.excluded ? ` · 제외 ${rec.excluded}` : ''} · ${rec.ranks}등까지`;
+      const wins = document.createElement('div'); wins.className = 'wins';
+      (rec.winners || []).forEach((w, i) => {
+        if (i) wins.append(' · ');
+        const b = document.createElement('b'); b.textContent = `${i + 1}등`; wins.append(b, ' ' + w);
+      });
+      const cp = document.createElement('button'); cp.type = 'button'; cp.className = 'ghost small'; cp.textContent = '복사';
+      cp.addEventListener('click', () => {
+        const text = [`[구슬 레이스 추첨 결과] ${rec.event} · ${rec.drawnAt}`, `참여 ${rec.total}명${rec.excluded ? ` (제외 ${rec.excluded})` : ''}`]
+          .concat((rec.winners || []).map((w, i) => `${i + 1}등: ${w}`)).join('\n');
+        const done = () => { cp.textContent = '복사됨'; setTimeout(() => { cp.textContent = '복사'; }, 1500); };
+        try { navigator.clipboard.writeText(text).then(done, () => { cp.textContent = '복사 안 됨'; }); } catch (e) { cp.textContent = '복사 안 됨'; }
+      });
+      li.append(ev, cp, when, meta, wins); ol.appendChild(li);
+    });
+  }
+  async function openRecords() {
+    $('recordsPanel').hidden = false; $('recordsMsg').textContent = '불러오는 중…'; $('recordsList').textContent = '';
+    try { renderRecords(await loadRecords()); }
+    catch (e) { $('recordsMsg').textContent = '기록을 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침을 눌러 주세요.'; }
+  }
+  $('recordsBtn').addEventListener('click', openRecords);
+  $('recordsReload').addEventListener('click', openRecords);
+  $('recordsClose').addEventListener('click', () => { $('recordsPanel').hidden = true; });
+
   /* ---------- 결과 복사 ---------- */
   function resultText() {
     const d = startedAt || new Date(), ex = excludedInRange();
     const stamp = d.toLocaleDateString('ko-KR') + ' ' + d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
-    const lines = [`[구슬 레이스 추첨 결과] ${stamp}`, `참여 ${settings.total}명${ex ? ` (제외 ${ex}개, 출발 ${settings.total - ex}개)` : ''}`];
+    const lines = [`[구슬 레이스 추첨 결과] ${settings.eventName ? settings.eventName + ' · ' : ''}${stamp}`, `참여 ${settings.total}명${ex ? ` (제외 ${ex}개, 출발 ${settings.total - ex}개)` : ''}`];
     race.finished.forEach((m, i) => lines.push(`${i + 1}등: ${m.num}번`));
     return lines.join('\n');
   }
