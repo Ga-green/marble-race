@@ -217,9 +217,9 @@ textarea:focus{border-color:var(--gold);outline:none}
         <small>불참·결석 번호는 구슬을 만들지 않습니다. 쉼표로 구분하고, 범위는 120-125처럼 적습니다.</small>
       </div>
       <div class="field">
-        <label for="eventName">행사 이름 <em>(기록을 남길 때만)</em></label>
+        <label for="eventName">행사 이름 <em>(선택)</em></label>
         <input id="eventName" class="text-in" type="text" maxlength="60" placeholder="예: 2027학년도 WKU 오픈캠퍼스_N회차" autocomplete="off">
-        <small id="eventHelp">이름을 적은 추첨만 레이스가 끝날 때 행사 이름·추첨 일시·당첨 번호가 구글 시트에 저장됩니다. 비워두면 저장하지 않습니다.</small>
+        <small id="eventHelp">레이스가 끝나면 모든 추첨의 추첨 일시·당첨 번호가 구글 시트에 저장됩니다. 행사 이름을 적으면 함께 기록되고, 비워두면 ‘이름 없는 추첨’으로 저장됩니다.</small>
       </div>
       <div class="course" aria-label="코스 구성">
         <b>핀 숲</b><i>→</i><b>지그재그</b><i>→</i><b>움직이는 구멍</b><i>→</i><b>범퍼</b><i>→</i><b>집결 게이트</b><i>→</i><b>원광대학교 간판</b><i>→</i><b>깔때기</b><i>→</i><b>한 개씩 문</b><i>→</i><b>운명의 구간</b><i>→</i><b>결승선</b>
@@ -750,7 +750,7 @@ function createRace(cfg) {
     const ex = err ? 0 : excludedInRange();
     $('summary').innerHTML = err ? '' : `구슬 <strong>${t - ex}</strong>개가 출발해 <strong>${k}</strong>명이 당첨됩니다${ex ? ` <span style="color:var(--muted);font-size:14px">(제외 ${ex}개)</span>` : ''}`;
     if (!RECORD_URL) { $('eventName').disabled = true; $('eventHelp').textContent = '기록 저장 주소가 아직 연결되지 않아 지금은 저장할 수 없습니다.'; $('recordsBtn').hidden = true; }
-    else if (settings.eventName && !err) { const s = document.createElement('span'); s.style.cssText = 'display:block;font-size:14px;color:var(--muted);margin-top:2px'; s.textContent = `‘${settings.eventName}’ 기록으로 구글 시트에 저장합니다`; $('summary').appendChild(s); }
+    else if (!err) { const s = document.createElement('span'); s.style.cssText = 'display:block;font-size:14px;color:var(--muted);margin-top:2px'; s.textContent = `‘${settings.eventName || '이름 없는 추첨'}’으로 구글 시트에 저장합니다`; $('summary').appendChild(s); }
     $('lastWrap').hidden = !lastResult;
     $('lastResult').textContent = lastResult ? '직전 추첨 결과\n' + lastResult : '';
   }
@@ -1483,9 +1483,9 @@ function createRace(cfg) {
   }
   function maybeSaveRecord() {
     lastPayload = null; setSave(null);
-    if (!RECORD_URL || !settings.eventName) return;
+    if (!RECORD_URL) return;
     lastPayload = {
-      event: settings.eventName,
+      event: settings.eventName || '이름 없는 추첨',
       drawnAt: drawStamp(startedAt || new Date()),
       total: settings.total,
       excluded: settings.excludedText.trim(),
@@ -1498,7 +1498,7 @@ function createRace(cfg) {
 
   function renderRecords(list) {
     const ol = $('recordsList'); ol.textContent = '';
-    $('recordsMsg').textContent = list.length ? `최근 ${list.length}건 · 새 기록이 위에 있습니다` : '아직 저장된 기록이 없습니다. 행사 이름을 적고 추첨하면 여기에 쌓입니다.';
+    $('recordsMsg').textContent = list.length ? `최근 ${list.length}건 · 새 기록이 위에 있습니다` : '아직 저장된 기록이 없습니다. 레이스를 끝까지 진행하면 여기에 쌓입니다.';
     list.forEach(rec => {
       const li = document.createElement('li'); li.className = 'rec-item';
       const ev = document.createElement('div'); ev.className = 'ev'; ev.textContent = rec.event || '(이름 없음)';
