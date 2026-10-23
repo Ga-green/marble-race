@@ -39,11 +39,12 @@ button,input,textarea{font:inherit;color:inherit}
 h1{font-family:var(--f-display);font-weight:400;font-size:clamp(26px,3.6vw,38px);line-height:1.1;margin:0;text-wrap:balance}
 .sub{color:var(--muted);margin:4px 0 0;font-size:14px}
 .tools{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.vol{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:5px 12px;font-size:14px}
-.vol span{color:var(--muted);white-space:nowrap}
-.vol input{width:120px;accent-color:var(--gold);cursor:pointer}
-.vol output{min-width:44px;text-align:right;font-variant-numeric:tabular-nums}
-.vol.off{opacity:.45}
+.vol{display:flex;align-items:center;gap:6px;padding:0 4px;font-size:12px;color:var(--muted);opacity:.55;transition:opacity .2s}
+.vol:hover,.vol:focus-within{opacity:1}
+.vol span{white-space:nowrap}
+.vol input{width:80px;height:14px;accent-color:var(--muted);cursor:pointer}
+.vol output{min-width:34px;text-align:right;font-variant-numeric:tabular-nums}
+.vol.off{opacity:.3}
 .ghost{background:transparent;border:1px solid var(--line);border-radius:8px;padding:8px 14px;cursor:pointer;color:var(--ink);white-space:nowrap}
 .ghost:hover{border-color:var(--muted)}
 .ghost:disabled{opacity:.4;cursor:not-allowed}
@@ -196,7 +197,7 @@ textarea:focus{border-color:var(--gold);outline:none}
     </div>
     <div class="tools">
       <button class="ghost" id="soundBtn" type="button" aria-pressed="true">소리 켜짐</button>
-      <label class="vol" id="volBox" for="volume"><span>음량</span><input id="volume" type="range" min="0" max="200" step="10" value="140"><output id="volOut" for="volume">140%</output></label>
+      <label class="vol" id="volBox" for="volume"><span>음량</span><input id="volume" type="range" min="0" max="250" step="10" value="180"><output id="volOut" for="volume">180%</output></label>
       <button class="ghost" id="fsBtn" type="button">전체화면</button>
     </div>
   </header>
@@ -775,8 +776,8 @@ function createRace(cfg) {
 
   /* ---------- 소리 (브라우저 합성) ---------- */
   const Sound = (() => {
-    let ac = null, master, bg, fx, nbuf, enabled = true, vol = 1.4;
-    try { const v = parseFloat(localStorage.getItem('marble-race-volume')); if (!isNaN(v)) vol = Math.max(0, Math.min(2, v)); } catch (e) {}
+    let ac = null, master, bg, fx, nbuf, verbIn, enabled = true, vol = 1.8;
+    try { const v = parseFloat(localStorage.getItem('marble-race-volume-v2')); if (!isNaN(v)) vol = Math.max(0, Math.min(2.5, v)); } catch (e) {}
     const level = () => (enabled ? 0.85 * vol : 0);
     let bgTimer = null, bgNext = 0, bgStep = 0, drumTimer = null, drumNext = 0, drumT0 = 0, riser = null, lastPop = 0;
     try { enabled = localStorage.getItem('marble-race-sound') !== 'off'; } catch (e) {}
@@ -789,8 +790,12 @@ function createRace(cfg) {
         comp.threshold.value = -8; comp.knee.value = 4; comp.ratio.value = 14; comp.attack.value = 0.003; comp.release.value = 0.2;
         comp.connect(ac.destination);
         master = ac.createGain(); master.gain.value = level(); master.connect(comp);
-        bg = ac.createGain(); bg.gain.value = 0.5; bg.connect(master);
+        const verb = ac.createConvolver(), ir = ac.createBuffer(2, Math.floor(ac.sampleRate * 1.8), ac.sampleRate);
+        for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / d.length, 2.6); }
+        verb.buffer = ir; verbIn = ac.createGain(); verbIn.gain.value = 0.22; verbIn.connect(verb); verb.connect(master);
+        bg = ac.createGain(); bg.gain.value = 0.85; bg.connect(master); bg.connect(verbIn);
         fx = ac.createGain(); fx.gain.value = 0.9; fx.connect(master);
+        const fxVerb = ac.createGain(); fxVerb.gain.value = 0.45; fx.connect(fxVerb); fxVerb.connect(verbIn);
         nbuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
         const d = nbuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
       }
@@ -823,24 +828,34 @@ function createRace(cfg) {
     const SPB = 60 / 128 / 4, ROOTS = [110, 87.31, 130.81, 98];
     const CH = [[440, 523.25, 659.25], [349.23, 440, 523.25], [392, 523.25, 659.25], [392, 493.88, 587.33]];
     const ARP = [0, 1, 2, 1, 0, 2, 1, 2];
+    function pad(dest, f, t, dur, vol) {
+      const lp = ac.createBiquadFilter(), g = ac.createGain();
+      lp.type = 'lowpass'; lp.frequency.value = 1400;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.25);
+      g.gain.setValueAtTime(vol, t + dur - 0.3); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      lp.connect(g); g.connect(dest);
+      [-9, 9].forEach(dt => { const o = ac.createOscillator(); o.type = 'sawtooth'; o.frequency.value = f; o.detune.value = dt; o.connect(lp); o.start(t); o.stop(t + dur + 0.05); });
+    }
     function bgTick() {
       while (bgNext < now() + 0.15) {
         const t = bgNext, s = bgStep % 16, bar = Math.floor(bgStep / 16) % 4;
-        if (s % 4 === 0) kick(bg, t, 0.5);
-        if (s % 4 === 2) noise(bg, t, 0.035, 0.08, 'highpass', 7500);
-        if (s === 4 || s === 12) noise(bg, t, 0.13, 0.16, 'bandpass', 1700, 0.8);
-        if ([0, 3, 6, 8, 10, 13].includes(s)) tone(bg, ROOTS[bar], t, SPB * 1.7, 'triangle', 0.22);
-        if (s % 2 === 0) tone(bg, CH[bar][ARP[s / 2]], t, SPB * 1.4, 'square', 0.035, 0.004);
+        if (s % 4 === 0) kick(bg, t, 0.6);
+        if (s % 4 === 2) noise(bg, t, 0.035, 0.09, 'highpass', 7500);
+        if (s === 6 || s === 14) noise(bg, t, 0.12, 0.05, 'highpass', 6000);
+        if (s === 4 || s === 12) noise(bg, t, 0.14, 0.18, 'bandpass', 1700, 0.8);
+        if (s === 0) CH[bar].forEach(f => pad(bg, f / 2, t, SPB * 16, 0.018));
+        if ([0, 3, 6, 8, 10, 13].includes(s)) { tone(bg, ROOTS[bar], t, SPB * 1.7, 'triangle', 0.24); tone(bg, ROOTS[bar] / 2, t, SPB * 1.7, 'sine', 0.16); }
+        if (s % 2 === 0) { tone(bg, CH[bar][ARP[s / 2]], t, SPB * 1.4, 'square', 0.03, 0.004); tone(bg, CH[bar][ARP[s / 2]] * 2, t, SPB * 1.2, 'triangle', 0.02, 0.004); }
         bgNext += SPB; bgStep++;
       }
     }
     function startBgm() {
       if (!init() || bgTimer) return;
-      bg.gain.cancelScheduledValues(now()); bg.gain.setValueAtTime(0.5, now());
+      bg.gain.cancelScheduledValues(now()); bg.gain.setValueAtTime(0.85, now());
       bgNext = now() + 0.06; bgStep = 0; bgTimer = setInterval(bgTick, 25);
     }
     function stopBgm() { if (bgTimer) { clearInterval(bgTimer); bgTimer = null; } }
-    function duck(on) { if (ac) bg.gain.setTargetAtTime(on ? 0.3 : 0.5, now(), 0.4); }
+    function duck(on) { if (ac) bg.gain.setTargetAtTime(on ? 0.55 : 0.85, now(), 0.4); }
     function startDrum() {
       if (!init() || drumTimer) return;
       duck(true); drumT0 = now(); drumNext = drumT0;
@@ -921,9 +936,9 @@ function createRace(cfg) {
     }
     function startLobby() {
       if (!init() || lbTimer) return;
-      if (!lb) { lb = ac.createGain(); lb.connect(master); }
+      if (!lb) { lb = ac.createGain(); lb.connect(master); lb.connect(verbIn); }
       const t = now();
-      lb.gain.cancelScheduledValues(t); lb.gain.setValueAtTime(0.0001, t); lb.gain.exponentialRampToValueAtTime(0.55, t + 1.2);
+      lb.gain.cancelScheduledValues(t); lb.gain.setValueAtTime(0.0001, t); lb.gain.exponentialRampToValueAtTime(0.9, t + 1.2);
       lbNext = t + 0.05; lbStep = 0; lbTimer = setInterval(lobbyTick, 25);
     }
     function stopLobby() {
@@ -965,7 +980,7 @@ function createRace(cfg) {
     }
     return { init, startBgm, stopBgm, startDrum, stopDrum, beep, pop, click, whoosh, lead, zip, chase, land, finish, victory, stopAll, startLobby, stopLobby, uiTick, confirm, reveal, ready: () => !!ac, setEnabled, isOn: () => enabled,
       getVolume: () => vol,
-      setVolume(v) { vol = Math.max(0, Math.min(2, v)); try { localStorage.setItem('marble-race-volume', String(vol)); } catch (e) {} if (ac) master.gain.setTargetAtTime(level(), now(), 0.03); } };
+      setVolume(v) { vol = Math.max(0, Math.min(2.5, v)); try { localStorage.setItem('marble-race-volume-v2', String(vol)); } catch (e) {} if (ac) master.gain.setTargetAtTime(level(), now(), 0.03); } };
   })();
   function renderSound() { const on = Sound.isOn(); if ($('volBox')) $('volBox').classList.toggle('off', !on); $('musicHint').classList.toggle('gone', !on || Sound.ready()); $('soundBtn').textContent = on ? '소리 켜짐' : '소리 꺼짐'; $('soundBtn').setAttribute('aria-pressed', on ? 'true' : 'false'); }
   function renderVolume() {
